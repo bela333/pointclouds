@@ -1,10 +1,15 @@
 use std::borrow::Cow;
+use object::Object;
 use wgpu::{PresentMode, TextureDescriptor, TextureUsages, TextureViewDescriptor};
 use winit::{
     event::{Event, WindowEvent},
     event_loop::EventLoop,
     window::Window,
 };
+
+mod points_pass;
+mod object;
+mod material;
 
 async fn run(event_loop: EventLoop<()>, window: Window) {
     let mut size = window.inner_size();
@@ -38,83 +43,21 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
         .await
         .expect("Failed to create device");
 
-    // Load the shaders from disk
-    let shader1 = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-        label: None,
-        source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!("shader1.wgsl"))),
-    });
-    let shader2 = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-        label: None,
-        source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!("shader2.wgsl"))),
-    });
+    let surface_capabilities = surface.get_capabilities(&adapter);
+    let surface_format = surface_capabilities.formats[0];
 
-    let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: None,
-        bind_group_layouts: &[],
-        push_constant_ranges: &[],
-    });
+    // Setup objects
+    // TODO: Put this into a closure for more customizability
+    let object1 = object::BasicObject::new(
+        material::Material::create(
+            &device,
+            surface_format,
+            "basic",
+            include_str!("shader.wgsl"),
+        )
+    );
 
-    let swapchain_capabilities = surface.get_capabilities(&adapter);
-    let swapchain_format = swapchain_capabilities.formats[0];
-
-    let mut render_target = device.create_texture(&TextureDescriptor {
-        label: None,
-        size: wgpu::Extent3d {
-            width: size.width,
-            height: size.height,
-            depth_or_array_layers: 1,
-        },
-        mip_level_count: 1,
-        sample_count: 1,
-        dimension: wgpu::TextureDimension::D2,
-        format: wgpu::TextureFormat::R32Uint,
-        usage: TextureUsages::RENDER_ATTACHMENT,
-        view_formats: &[wgpu::TextureFormat::R32Uint],
-    });
-
-    let render_pipeline1 = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: None,
-        layout: Some(&pipeline_layout),
-        vertex: wgpu::VertexState {
-            module: &shader1,
-            entry_point: "vs_main",
-            buffers: &[],
-        },
-        fragment: Some(wgpu::FragmentState {
-            module: &shader1,
-            entry_point: "fs_main",
-            targets: &[Some(swapchain_format.into())],
-        }),
-        primitive: wgpu::PrimitiveState {
-            polygon_mode: wgpu::PolygonMode::Point,
-            ..Default::default()
-        },
-        depth_stencil: None,
-        multisample: wgpu::MultisampleState::default(),
-        multiview: None,
-    });
-
-    let render_pipeline2 = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: None,
-        layout: Some(&pipeline_layout),
-        vertex: wgpu::VertexState {
-            module: &shader2,
-            entry_point: "vs_main",
-            buffers: &[],
-        },
-        fragment: Some(wgpu::FragmentState {
-            module: &shader2,
-            entry_point: "fs_main",
-            targets: &[Some(render_target.format().into())],
-        }),
-        primitive: wgpu::PrimitiveState {
-            polygon_mode: wgpu::PolygonMode::Point,
-            ..Default::default()
-        },
-        depth_stencil: None,
-        multisample: wgpu::MultisampleState::default(),
-        multiview: None,
-    });
+    let objects: Vec<Box<dyn Object>> = vec![Box::new(object1)];
 
     
 
@@ -133,7 +76,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
             // Have the closure take ownership of the resources.
             // `event_loop.run` never returns, therefore we must do this to ensure
             // the resources are properly cleaned up.
-            let _ = (&instance, &adapter, &shader1, &shader2, &pipeline_layout);
+            let _ = (&instance, &adapter);
 
             if let Event::AboutToWait = event {
                 window.request_redraw();
@@ -159,29 +102,6 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                             view: &view,
                             resolve_target: None,
                             ops: wgpu::Operations {
-                                load: wgpu::LoadOp::Clear(wgpu::Color::GREEN),
-                                store: wgpu::StoreOp::Store,
-                            },
-                        })],
-                        depth_stencil_attachment: None,
-                        timestamp_writes: None,
-                        occlusion_query_set: None,
-                    });
-                    rpass.set_pipeline(&render_pipeline1);
-                    rpass.draw(0..3, 0..1);
-                }
-
-                // Render to off buffer
-                let view = render_target.create_view(&TextureViewDescriptor {
-                    ..Default::default()
-                });
-                {
-                    let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                        label: None,
-                        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                            view: &view,
-                            resolve_target: None,
-                            ops: wgpu::Operations {
                                 load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
                                 store: wgpu::StoreOp::Store,
                             },
@@ -190,9 +110,11 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                         timestamp_writes: None,
                         occlusion_query_set: None,
                     });
-                    rpass.set_pipeline(&render_pipeline2);
-                    rpass.draw(0..3, 0..1);
+                    for object in &objects{
+                        object.draw(&mut rpass);
+                    }
                 }
+
 
                 queue.submit(Some(encoder.finish()));
                 frame.present();
