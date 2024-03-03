@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use nalgebra::vector;
 use object::Object;
 use wgpu::{PresentMode, TextureDescriptor, TextureUsages, TextureViewDescriptor};
 use winit::{
@@ -49,12 +50,21 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
     // Setup objects
     // TODO: Put this into a closure for more customizability
     let object1 = object::BasicObject::new(
-        material::Material::create(
-            &device,
-            surface_format,
-            "basic",
-            include_str!("shader.wgsl"),
-        )
+        &device, surface_format,
+        vec![
+            object::BasicVertex {
+                position: vector![0.0, 0.0, 0.0],
+                color: vector![1.0, 0.0, 0.0],
+            },
+            object::BasicVertex {
+                position: vector![0.0, 0.5, 0.0],
+                color: vector![0.0, 1.0, 0.0],
+            },
+            object::BasicVertex {
+                position: vector![0.5, 0.0, 0.0],
+                color: vector![0.0, 0.0, 1.0],
+            },
+        ],
     );
 
     let objects: Vec<Box<dyn Object>> = vec![Box::new(object1)];
@@ -96,6 +106,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                 let mut encoder =
                     device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
                 {
+                    //TODO: Put all this into passes
                     let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                         label: None,
                         color_attachments: &[Some(wgpu::RenderPassColorAttachment {

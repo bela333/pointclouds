@@ -10,3 +10,5 @@ wgpu = "0.19.1"
 winit = "0.29.11"
 env_logger = "0.11.2"
 pollster = "0.2.4"
+bytemuck = {version="1.14.3", features=["derive"]}
+nalgebra = {version="0.32.4", features=["bytemuck", "macros"]}
