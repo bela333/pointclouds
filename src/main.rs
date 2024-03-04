@@ -1,5 +1,6 @@
+use las::Read;
 use nalgebra::vector;
-use object::Object;
+use object::{BasicVertex, Object};
 
 use wgpu::PresentMode;
 use winit::{
@@ -49,23 +50,26 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
 
     // Setup objects
     // TODO: Put this into a closure for more customizability
+    let mut vertices = Vec::new();
+    let mut reader = las::Reader::from_path("pointcloud.las").unwrap();
+    for point in reader.points() {
+        let point = point.unwrap();
+        if let Some(color) = point.color{
+            vertices.push(BasicVertex{
+                position: vector![point.x as f32, point.z as f32-1.0, -point.y as f32],
+                color: vector![color.red as f32 / 65536.0, color.green as f32 / 65536.0, color.blue as f32 / 65536.0],
+            });
+        }else{
+            vertices.push(BasicVertex{
+                position: vector![point.x as f32, point.y as f32, point.z as f32],
+                color: vector![0.0, 0.0, 0.0],
+            });
+        }
+    }
     let object1 = object::BasicObject::new(
         &device,
         surface_format,
-        vec![
-            object::BasicVertex {
-                position: vector![0.0, 0.0, 0.0],
-                color: vector![1.0, 0.0, 0.0],
-            },
-            object::BasicVertex {
-                position: vector![0.0, 0.5, 0.0],
-                color: vector![0.0, 1.0, 0.0],
-            },
-            object::BasicVertex {
-                position: vector![0.5, 0.0, 0.0],
-                color: vector![0.0, 0.0, 1.0],
-            },
-        ],
+        vertices
     );
 
     let objects: Vec<Box<dyn Object>> = vec![Box::new(object1)];
@@ -73,7 +77,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
     let mut config = surface
         .get_default_config(&adapter, size.width, size.height)
         .unwrap();
-    config.present_mode = PresentMode::AutoVsync;
+    config.present_mode = PresentMode::Immediate;
     surface.configure(&device, &config);
 
     let window = &window;
