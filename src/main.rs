@@ -79,7 +79,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
 
     let window = &window;
 
-    event_loop.set_control_flow(winit::event_loop::ControlFlow::Wait);
+    event_loop.set_control_flow(winit::event_loop::ControlFlow::Poll);
 
     event_loop
         .run(move |event, target| {
@@ -89,14 +89,6 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
             let _ = (&instance, &adapter);
 
             if let Event::AboutToWait = event {
-                window.request_redraw();
-            }
-
-            if let Event::WindowEvent {
-                event: WindowEvent::RedrawRequested,
-                ..
-            } = event
-            {
                 let frame = surface
                     .get_current_texture()
                     .expect("Failed to acquire next swap chain texture");
