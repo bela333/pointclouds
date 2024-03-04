@@ -1,15 +1,25 @@
 use std::borrow::Cow;
 
-use wgpu::{Device, PipelineLayout, RenderPipeline, ShaderModule, TextureFormat, VertexBufferLayout};
+use wgpu::{
+    Device, PipelineLayout, RenderPipeline, ShaderModule, TextureFormat, VertexBufferLayout,
+};
 
 pub struct Material {
+    #[allow(dead_code)]
     shader: ShaderModule,
+    #[allow(dead_code)]
     pipeline_layout: PipelineLayout,
     render_pipeline: wgpu::RenderPipeline,
 }
 
-impl Material{
-    pub fn create(device: &Device, format: TextureFormat, material_name: &str, vertex_buffers: &[VertexBufferLayout], source: &str) -> Self{
+impl Material {
+    pub fn create(
+        device: &Device,
+        format: TextureFormat,
+        material_name: &str,
+        vertex_buffers: &[VertexBufferLayout],
+        source: &str,
+    ) -> Self {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some(format!("{} shader", material_name).as_str()),
             source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(source)),
@@ -41,14 +51,14 @@ impl Material{
             multiview: None,
         });
 
-        Self{
+        Self {
             pipeline_layout,
             shader,
-            render_pipeline
+            render_pipeline,
         }
     }
 
-    pub fn get_render_pipeline(&self) -> &RenderPipeline{
+    pub fn get_render_pipeline(&self) -> &RenderPipeline {
         &self.render_pipeline
     }
 }

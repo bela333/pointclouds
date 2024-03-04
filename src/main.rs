@@ -1,16 +1,16 @@
-use std::borrow::Cow;
 use nalgebra::vector;
 use object::Object;
-use wgpu::{PresentMode, TextureDescriptor, TextureUsages, TextureViewDescriptor};
+
+use wgpu::PresentMode;
 use winit::{
     event::{Event, WindowEvent},
     event_loop::EventLoop,
     window::Window,
 };
 
-mod points_pass;
-mod object;
 mod material;
+mod object;
+mod points_pass;
 
 async fn run(event_loop: EventLoop<()>, window: Window) {
     let mut size = window.inner_size();
@@ -50,7 +50,8 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
     // Setup objects
     // TODO: Put this into a closure for more customizability
     let object1 = object::BasicObject::new(
-        &device, surface_format,
+        &device,
+        surface_format,
         vec![
             object::BasicVertex {
                 position: vector![0.0, 0.0, 0.0],
@@ -68,8 +69,6 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
     );
 
     let objects: Vec<Box<dyn Object>> = vec![Box::new(object1)];
-
-    
 
     let mut config = surface
         .get_default_config(&adapter, size.width, size.height)
@@ -113,11 +112,10 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                         timestamp_writes: None,
                         occlusion_query_set: None,
                     });
-                    for object in &objects{
+                    for object in &objects {
                         object.draw(&mut rpass);
                     }
                 }
-
 
                 queue.submit(Some(encoder.finish()));
                 frame.present();
