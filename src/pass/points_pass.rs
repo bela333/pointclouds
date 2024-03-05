@@ -1,27 +1,26 @@
-use wgpu::{CommandEncoder, TextureView};
+use wgpu::CommandEncoder;
 
 use crate::{
     object::Object,
     texture_store::{Reservation, TextureResolver},
 };
 
-pub trait Pass {
-    fn render(&self, encoder: &mut CommandEncoder, textures: &TextureResolver);
-}
+use super::Pass;
 
 pub struct PointsPass {
     objects: Vec<Box<dyn Object>>,
+    output_view: Reservation,
 }
 
 impl PointsPass {
-    pub fn new(objects: Vec<Box<dyn Object>>) -> Self {
-        Self { objects }
+    pub fn new(objects: Vec<Box<dyn Object>>, output_view: Reservation) -> Self {
+        Self { objects, output_view}
     }
 }
 
 impl Pass for PointsPass {
     fn render(&self, encoder: &mut CommandEncoder, textures: &TextureResolver) {
-        let view = textures.resolve(Reservation::get_surface()); // TODO: Replace this with input texture
+        let view = textures.resolve(self.output_view);
         let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: None,
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {

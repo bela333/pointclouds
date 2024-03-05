@@ -2,8 +2,8 @@ use las::Read;
 use nalgebra::vector;
 use object::{BasicVertex, Object};
 
-use passes::{Pass, PointsPass};
-use texture_store::TextureStore;
+use pass::{points_pass::PointsPass, Pass};
+use texture_store::{Reservation, TextureStore};
 use wgpu::PresentMode;
 use winit::{
     event::{Event, WindowEvent},
@@ -13,7 +13,7 @@ use winit::{
 
 mod material;
 mod object;
-mod passes;
+mod pass;
 mod texture_store;
 
 async fn run(event_loop: EventLoop<()>, window: Window) {
@@ -54,6 +54,8 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
     // Reserve textures
     let texture_store = TextureStore::new();
 
+    
+
     // Setup objects
     let mut vertices = Vec::new();
     let mut reader = las::Reader::from_path("pointcloud.las").unwrap();
@@ -75,12 +77,13 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
             });
         }
     }
+
     let object1 = object::BasicObject::new(&device, surface_format, vertices);
 
     let objects: Vec<Box<dyn Object>> = vec![Box::new(object1)];
 
     // Create passes
-    let pointpass = PointsPass::new(objects);
+    let pointpass = PointsPass::new(objects, Reservation::get_surface());
     let passes: Vec<Box<dyn Pass>> = vec![Box::new(pointpass)];
 
     let mut config = surface

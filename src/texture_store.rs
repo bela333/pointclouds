@@ -48,7 +48,7 @@ impl<'a> TextureResolver<'a> {
         }
     }
 }
-
+#[derive(Debug, Copy, Clone)]
 pub struct Reservation(InnerReservation);
 
 impl Reservation {
@@ -58,11 +58,11 @@ impl Reservation {
         }
     }
 }
-
+#[derive(Debug, Copy, Clone)]
 struct TextureID {
     id: usize,
 }
-
+#[derive(Debug, Copy, Clone)]
 enum InnerReservation {
     Surface,
     TextureID(TextureID),
