@@ -2,6 +2,8 @@ use las::Read;
 use nalgebra::vector;
 use object::{BasicVertex, Object};
 
+use passes::{Pass, PointsPass};
+use texture_store::TextureStore;
 use wgpu::PresentMode;
 use winit::{
     event::{Event, WindowEvent},
@@ -11,7 +13,8 @@ use winit::{
 
 mod material;
 mod object;
-mod points_pass;
+mod passes;
+mod texture_store;
 
 async fn run(event_loop: EventLoop<()>, window: Window) {
     let mut size = window.inner_size();
@@ -48,36 +51,42 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
     let surface_capabilities = surface.get_capabilities(&adapter);
     let surface_format = surface_capabilities.formats[0];
 
+    // Reserve textures
+    let texture_store = TextureStore::new();
+
     // Setup objects
-    // TODO: Put this into a closure for more customizability
     let mut vertices = Vec::new();
     let mut reader = las::Reader::from_path("pointcloud.las").unwrap();
     for point in reader.points() {
         let point = point.unwrap();
-        if let Some(color) = point.color{
-            vertices.push(BasicVertex{
-                position: vector![point.x as f32, point.z as f32-1.0, -point.y as f32],
-                color: vector![color.red as f32 / 65536.0, color.green as f32 / 65536.0, color.blue as f32 / 65536.0],
+        if let Some(color) = point.color {
+            vertices.push(BasicVertex {
+                position: vector![point.x as f32, point.z as f32 - 1.0, -point.y as f32],
+                color: vector![
+                    color.red as f32 / 65536.0,
+                    color.green as f32 / 65536.0,
+                    color.blue as f32 / 65536.0
+                ],
             });
-        }else{
-            vertices.push(BasicVertex{
+        } else {
+            vertices.push(BasicVertex {
                 position: vector![point.x as f32, point.y as f32, point.z as f32],
                 color: vector![0.0, 0.0, 0.0],
             });
         }
     }
-    let object1 = object::BasicObject::new(
-        &device,
-        surface_format,
-        vertices
-    );
+    let object1 = object::BasicObject::new(&device, surface_format, vertices);
 
     let objects: Vec<Box<dyn Object>> = vec![Box::new(object1)];
+
+    // Create passes
+    let pointpass = PointsPass::new(objects);
+    let passes: Vec<Box<dyn Pass>> = vec![Box::new(pointpass)];
 
     let mut config = surface
         .get_default_config(&adapter, size.width, size.height)
         .unwrap();
-    config.present_mode = PresentMode::Immediate;
+    config.present_mode = PresentMode::AutoVsync;
     surface.configure(&device, &config);
 
     let window = &window;
@@ -101,23 +110,9 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                 let mut encoder =
                     device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
                 {
-                    //TODO: Put all this into passes
-                    let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                        label: None,
-                        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                            view: &view,
-                            resolve_target: None,
-                            ops: wgpu::Operations {
-                                load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
-                                store: wgpu::StoreOp::Store,
-                            },
-                        })],
-                        depth_stencil_attachment: None,
-                        timestamp_writes: None,
-                        occlusion_query_set: None,
-                    });
-                    for object in &objects {
-                        object.draw(&mut rpass);
+                    let resolver = texture_store.get_resolver(&view);
+                    for pass in &passes {
+                        pass.render(&mut encoder, &resolver);
                     }
                 }
 
