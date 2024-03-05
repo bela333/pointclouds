@@ -63,9 +63,9 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
             vertices.push(BasicVertex {
                 position: vector![point.x as f32, point.z as f32 - 1.0, -point.y as f32],
                 color: vector![
-                    color.red as f32 / 65536.0,
-                    color.green as f32 / 65536.0,
-                    color.blue as f32 / 65536.0
+                    color.red as f32 / 65536.,
+                    color.green as f32 / 65536.,
+                    color.blue as f32 / 65536.
                 ],
             });
         } else {
