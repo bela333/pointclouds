@@ -3,7 +3,7 @@ use nalgebra::vector;
 use object::{BasicVertex, Object};
 
 use pass::{points_pass::PointsPass, Pass};
-use texture_store::{Reservation, TextureStore};
+use texture_store::{TextureHandle, TextureStore};
 use wgpu::PresentMode;
 use winit::{
     event::{Event, WindowEvent},
@@ -81,7 +81,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
     let objects: Vec<Box<dyn Object>> = vec![Box::new(object1)];
 
     // Create passes
-    let pointpass = PointsPass::new(objects, Reservation::get_surface());
+    let pointpass = PointsPass::new(objects, TextureHandle::get_surface());
     let passes: Vec<Box<dyn Pass>> = vec![Box::new(pointpass)];
 
     let mut config = surface

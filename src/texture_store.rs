@@ -21,18 +21,18 @@ impl TextureStore {
         &mut self,
         device: &Device,
         texture_decriptor: &TextureDescriptor,
-    ) -> Reservation {
+    ) -> TextureHandle {
         let texture = device.create_texture(texture_decriptor);
         let view = texture.create_view(&Default::default());
         let id = self.textures.len();
         self.textures.push(Texture { texture, view });
-        Reservation(InnerReservation::TextureID(TextureID { id }))
+        TextureHandle(InnerTextureHandle::TextureID(TextureID { id }))
     }
 
-    pub fn resolve_format(&self, view: Reservation) -> Option<TextureFormat> {
+    pub fn resolve_format(&self, view: TextureHandle) -> Option<TextureFormat> {
         match view.0 {
-            InnerReservation::Surface => None,
-            InnerReservation::TextureID(i) => Some(self.textures[i.id].texture.format()),
+            InnerTextureHandle::Surface => None,
+            InnerTextureHandle::TextureID(i) => Some(self.textures[i.id].texture.format()),
         }
     }
 }
@@ -48,20 +48,20 @@ pub struct TextureResolver<'a> {
 }
 
 impl<'a> TextureResolver<'a> {
-    pub fn resolve(&self, view: Reservation) -> &'a TextureView {
+    pub fn resolve(&self, view: TextureHandle) -> &'a TextureView {
         match view.0 {
-            InnerReservation::Surface => self.surface_view,
-            InnerReservation::TextureID(i) => &self.store.textures[i.id].view,
+            InnerTextureHandle::Surface => self.surface_view,
+            InnerTextureHandle::TextureID(i) => &self.store.textures[i.id].view,
         }
     }
 }
 #[derive(Debug, Copy, Clone)]
-pub struct Reservation(InnerReservation);
+pub struct TextureHandle(InnerTextureHandle);
 
-impl Reservation {
+impl TextureHandle {
     pub fn get_surface() -> Self {
         Self {
-            0: InnerReservation::Surface,
+            0: InnerTextureHandle::Surface,
         }
     }
 }
@@ -70,7 +70,7 @@ struct TextureID {
     id: usize,
 }
 #[derive(Debug, Copy, Clone)]
-enum InnerReservation {
+enum InnerTextureHandle {
     Surface,
     TextureID(TextureID),
 }

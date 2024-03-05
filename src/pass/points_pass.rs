@@ -2,18 +2,18 @@ use wgpu::CommandEncoder;
 
 use crate::{
     object::Object,
-    texture_store::{Reservation, TextureResolver},
+    texture_store::{TextureHandle, TextureResolver},
 };
 
 use super::Pass;
 
 pub struct PointsPass {
     objects: Vec<Box<dyn Object>>,
-    output_view: Reservation,
+    output_view: TextureHandle,
 }
 
 impl PointsPass {
-    pub fn new(objects: Vec<Box<dyn Object>>, output_view: Reservation) -> Self {
+    pub fn new(objects: Vec<Box<dyn Object>>, output_view: TextureHandle) -> Self {
         Self {
             objects,
             output_view,
