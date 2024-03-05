@@ -1,4 +1,4 @@
-use wgpu::{Device, TextureDescriptor, TextureView};
+use wgpu::{Device, TextureDescriptor, TextureFormat, TextureView};
 
 pub struct TextureStore {
     textures: Vec<Texture>,
@@ -19,7 +19,7 @@ impl TextureStore {
 
     pub fn reserve(
         &mut self,
-        device: Device,
+        device: &Device,
         texture_decriptor: &TextureDescriptor,
     ) -> Reservation {
         let texture = device.create_texture(texture_decriptor);
@@ -27,6 +27,13 @@ impl TextureStore {
         let id = self.textures.len();
         self.textures.push(Texture { texture, view });
         Reservation(InnerReservation::TextureID(TextureID { id }))
+    }
+
+    pub fn resolve_format(&self, view: Reservation) -> Option<TextureFormat> {
+        match view.0 {
+            InnerReservation::Surface => None,
+            InnerReservation::TextureID(i) => Some(self.textures[i.id].texture.format()),
+        }
     }
 }
 

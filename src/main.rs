@@ -52,9 +52,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
     let surface_format = surface_capabilities.formats[0];
 
     // Reserve textures
-    let texture_store = TextureStore::new();
-
-        
+    let mut texture_store = TextureStore::new();
 
     // Setup objects
     let mut vertices = Vec::new();

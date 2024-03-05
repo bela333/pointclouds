@@ -14,7 +14,10 @@ pub struct PointsPass {
 
 impl PointsPass {
     pub fn new(objects: Vec<Box<dyn Object>>, output_view: Reservation) -> Self {
-        Self { objects, output_view}
+        Self {
+            objects,
+            output_view,
+        }
     }
 }
 
