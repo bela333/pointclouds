@@ -54,7 +54,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
     // Reserve textures
     let texture_store = TextureStore::new();
 
-    
+        
 
     // Setup objects
     let mut vertices = Vec::new();
