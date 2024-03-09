@@ -12,6 +12,7 @@ pub struct PointsPass {
     output_view: TextureHandle,
     uniform_buf: Buffer,
     bind_group: wgpu::BindGroup,
+    depth_buffer: TextureHandle,
 }
 
 impl PointsPass {
@@ -20,6 +21,7 @@ impl PointsPass {
         bind_group_layout: &BindGroupLayout,
         objects: Vec<Box<dyn Object>>,
         output_view: TextureHandle,
+        depth_buffer: TextureHandle,
     ) -> Self {
         let uniform_buf = device.create_buffer(&wgpu::BufferDescriptor {
             label: None,
@@ -40,6 +42,7 @@ impl PointsPass {
             output_view,
             uniform_buf,
             bind_group,
+            depth_buffer,
         }
     }
 }
@@ -52,11 +55,14 @@ impl Pass for PointsPass {
         encoder: &mut CommandEncoder,
         textures: &TextureResolver,
     ) {
+        // Write current perspective matrix to the uniform buffer
         let mx: nalgebra::Matrix4<f32> =
             nalgebra::Matrix4::new_perspective(aspect_ratio, 1.0, 0.1, 100.0);
-        // Write current perspective matrix to the uniform buffer
         queue.write_buffer(&self.uniform_buf, 0, bytemuck::bytes_of(&mx));
+
         let view = textures.resolve(self.output_view);
+        let depth_buffer = textures.resolve(self.depth_buffer);
+
         let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: None,
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -67,7 +73,14 @@ impl Pass for PointsPass {
                     store: wgpu::StoreOp::Store,
                 },
             })],
-            depth_stencil_attachment: None,
+            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                view: &depth_buffer,
+                depth_ops: Some(wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(1.0),
+                    store: wgpu::StoreOp::Store,
+                }),
+                stencil_ops: None,
+            }),
             timestamp_writes: None,
             occlusion_query_set: None,
         });

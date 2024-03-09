@@ -35,6 +35,25 @@ impl TextureStore {
             InnerTextureHandle::TextureID(i) => Some(self.textures[i.id].texture.format()),
         }
     }
+
+    pub fn recreate(
+        &mut self,
+        device: &Device,
+        texture_decriptor: &TextureDescriptor,
+        depth_buffer: TextureHandle,
+    ) -> Option<()> {
+        match depth_buffer.0 {
+            InnerTextureHandle::Surface => {
+                return None; // TODO: Add proper error handling
+            }
+            InnerTextureHandle::TextureID(i) => {
+                let texture = device.create_texture(texture_decriptor);
+                let view = texture.create_view(&Default::default());
+                self.textures[i.id] = Texture { texture, view };
+                return Some(());
+            }
+        }
+    }
 }
 
 pub struct Texture {

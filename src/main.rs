@@ -4,7 +4,7 @@ use object::{BasicVertex, Object};
 
 use pass::{points_pass::PointsPass, Pass};
 use texture_store::{TextureHandle, TextureStore};
-use wgpu::PresentMode;
+use wgpu::{PresentMode, TextureDescriptor};
 use winit::{
     dpi::PhysicalSize,
     event::{Event, WindowEvent},
@@ -54,6 +54,23 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
 
     // Reserve textures
     let mut texture_store = TextureStore::new();
+    let depth_buffer = texture_store.reserve(
+        &device,
+        &TextureDescriptor {
+            label: None,
+            size: wgpu::Extent3d {
+                width: size.width,
+                height: size.height,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Depth32Float,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+            view_formats: &[],
+        },
+    );
 
     // Setup objects
     let mut vertices = Vec::new();
@@ -101,6 +118,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
         &bind_group_layout,
         objects,
         TextureHandle::get_surface(),
+        depth_buffer,
     );
     let passes: Vec<Box<dyn Pass>> = vec![Box::new(pointpass)];
 
@@ -121,7 +139,50 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
             // the resources are properly cleaned up.
             let _ = (&instance, &adapter);
 
-            if let Event::AboutToWait = event {
+            if let Event::WindowEvent {
+                window_id: _,
+                event,
+            } = &event
+            {
+                match event {
+                    WindowEvent::Resized(new_size) => {
+                        // Reconfigure the surface with the new size
+                        config.width = new_size.width.max(1);
+                        config.height = new_size.height.max(1);
+                        size = PhysicalSize::new(config.width, config.height);
+                        surface.configure(&device, &config);
+                        // On macos the window needs to be redrawn manually after resizing
+                        window.request_redraw();
+
+                        // Update the depth buffer
+                        texture_store
+                            .recreate(
+                                &device,
+                                &TextureDescriptor {
+                                    label: None,
+                                    size: wgpu::Extent3d {
+                                        width: size.width,
+                                        height: size.height,
+                                        depth_or_array_layers: 1,
+                                    },
+                                    mip_level_count: 1,
+                                    sample_count: 1,
+                                    dimension: wgpu::TextureDimension::D2,
+                                    format: wgpu::TextureFormat::Depth32Float,
+                                    usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                                        | wgpu::TextureUsages::TEXTURE_BINDING,
+                                    view_formats: &[],
+                                },
+                                depth_buffer,
+                            )
+                            .unwrap();
+                    }
+                    WindowEvent::CloseRequested => target.exit(),
+                    _ => {}
+                };
+            }
+
+            if let Event::AboutToWait = &event {
                 let frame = surface
                     .get_current_texture()
                     .expect("Failed to acquire next swap chain texture");
@@ -144,26 +205,6 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
 
                 queue.submit(Some(encoder.finish()));
                 frame.present();
-            }
-
-            if let Event::WindowEvent {
-                window_id: _,
-                event,
-            } = event
-            {
-                match event {
-                    WindowEvent::Resized(new_size) => {
-                        // Reconfigure the surface with the new size
-                        config.width = new_size.width.max(1);
-                        config.height = new_size.height.max(1);
-                        size = PhysicalSize::new(config.width, config.height);
-                        surface.configure(&device, &config);
-                        // On macos the window needs to be redrawn manually after resizing
-                        window.request_redraw();
-                    }
-                    WindowEvent::CloseRequested => target.exit(),
-                    _ => {}
-                };
             }
         })
         .unwrap();
