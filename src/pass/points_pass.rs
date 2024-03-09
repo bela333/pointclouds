@@ -62,7 +62,7 @@ impl Pass for PointsPass {
         // Write current perspective matrix to the uniform buffer
         let perspective: nalgebra::Matrix4<f32> =
             nalgebra::Matrix4::new_perspective(aspect_ratio, 1.0, 0.1, 100.0);
-        let camera_position = nalgebra::Point3::new(elapsed.cos() * 2.0, 0.0, elapsed.sin() * 2.0);
+        let camera_position = nalgebra::Point3::new(elapsed.cos() * 1.0, 0.0, elapsed.sin() * 1.0);
         let camera_lookat_matrix =  nalgebra::Matrix4::look_at_rh(
             &camera_position,
             &nalgebra::Point3::new(0.0, 0.0, 0.0),

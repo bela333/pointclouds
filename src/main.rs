@@ -79,7 +79,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
         let point = point.unwrap();
         if let Some(color) = point.color {
             vertices.push(BasicVertex {
-                position: vector![point.x as f32, point.z as f32-1.0, point.y as f32],
+                position: vector![point.x as f32, point.z as f32, point.y as f32],
                 color: vector![
                     color.red as f32 / 65536.,
                     color.green as f32 / 65536.,
@@ -125,7 +125,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
     let mut config = surface
         .get_default_config(&adapter, size.width, size.height)
         .unwrap();
-    config.present_mode = PresentMode::Mailbox;
+    config.present_mode = PresentMode::Immediate;
     surface.configure(&device, &config);
 
     let window = &window;
