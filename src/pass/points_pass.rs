@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use wgpu::{BindGroupLayout, Buffer, CommandEncoder, Device, Queue};
 
 use crate::{
@@ -54,10 +56,19 @@ impl Pass for PointsPass {
         queue: &Queue,
         encoder: &mut CommandEncoder,
         textures: &TextureResolver,
+        elapsed: Duration,
     ) {
+        let elapsed = elapsed.as_secs_f32();
         // Write current perspective matrix to the uniform buffer
-        let mx: nalgebra::Matrix4<f32> =
+        let perspective: nalgebra::Matrix4<f32> =
             nalgebra::Matrix4::new_perspective(aspect_ratio, 1.0, 0.1, 100.0);
+        let camera_position = nalgebra::Point3::new(elapsed.cos() * 2.0, 0.0, elapsed.sin() * 2.0);
+        let camera_lookat_matrix =  nalgebra::Matrix4::look_at_rh(
+            &camera_position,
+            &nalgebra::Point3::new(0.0, 0.0, 0.0),
+            &nalgebra::Vector3::new(0.0, 1.0, 0.0),
+        );
+        let mx = perspective * camera_lookat_matrix;
         queue.write_buffer(&self.uniform_buf, 0, bytemuck::bytes_of(&mx));
 
         let view = textures.resolve(self.output_view);
@@ -69,7 +80,7 @@ impl Pass for PointsPass {
                 view,
                 resolve_target: None,
                 ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                    load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
                     store: wgpu::StoreOp::Store,
                 },
             })],

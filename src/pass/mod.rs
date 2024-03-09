@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use wgpu::{CommandEncoder, Queue};
 
 use crate::texture_store::TextureResolver;
@@ -11,5 +13,6 @@ pub trait Pass {
         queue: &Queue,
         encoder: &mut CommandEncoder,
         textures: &TextureResolver,
+        elapsed: Duration
     );
 }

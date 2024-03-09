@@ -79,7 +79,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
         let point = point.unwrap();
         if let Some(color) = point.color {
             vertices.push(BasicVertex {
-                position: vector![point.x as f32, point.z as f32 - 1.0, -point.y as f32],
+                position: vector![point.x as f32, point.z as f32-1.0, point.y as f32],
                 color: vector![
                     color.red as f32 / 65536.,
                     color.green as f32 / 65536.,
@@ -125,12 +125,14 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
     let mut config = surface
         .get_default_config(&adapter, size.width, size.height)
         .unwrap();
-    config.present_mode = PresentMode::AutoVsync;
+    config.present_mode = PresentMode::Mailbox;
     surface.configure(&device, &config);
 
     let window = &window;
 
     event_loop.set_control_flow(winit::event_loop::ControlFlow::Poll);
+
+    let start_time = std::time::Instant::now();
 
     event_loop
         .run(move |event, target| {
@@ -193,12 +195,14 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                     device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
                 {
                     let resolver = texture_store.get_resolver(&view);
+                    let elapsed = start_time.elapsed();
                     for pass in &passes {
                         pass.render(
                             size.width as f32 / size.height as f32,
                             &queue,
                             &mut encoder,
                             &resolver,
+                            elapsed
                         );
                     }
                 }
