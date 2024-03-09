@@ -12,8 +12,8 @@ impl TextureStore {
     }
     pub fn get_resolver<'a>(&'a self, surface_view: &'a TextureView) -> TextureResolver<'a> {
         TextureResolver {
-            store: &self,
-            surface_view: surface_view,
+            store: self,
+            surface_view,
         }
     }
 
@@ -44,13 +44,13 @@ impl TextureStore {
     ) -> Option<()> {
         match depth_buffer.0 {
             InnerTextureHandle::Surface => {
-                return None; // TODO: Add proper error handling
+                None// TODO: Add proper error handling
             }
             InnerTextureHandle::TextureID(i) => {
                 let texture = device.create_texture(texture_decriptor);
                 let view = texture.create_view(&Default::default());
                 self.textures[i.id] = Texture { texture, view };
-                return Some(());
+                Some(())
             }
         }
     }
@@ -79,9 +79,7 @@ pub struct TextureHandle(InnerTextureHandle);
 
 impl TextureHandle {
     pub fn get_surface() -> Self {
-        Self {
-            0: InnerTextureHandle::Surface,
-        }
+        Self(InnerTextureHandle::Surface)
     }
 }
 #[derive(Debug, Copy, Clone)]
