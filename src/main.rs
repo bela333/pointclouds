@@ -6,6 +6,7 @@ use pass::{points_pass::PointsPass, Pass};
 use texture_store::{TextureHandle, TextureStore};
 use wgpu::PresentMode;
 use winit::{
+    dpi::PhysicalSize,
     event::{Event, WindowEvent},
     event_loop::EventLoop,
     window::Window,
@@ -76,12 +77,31 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
         }
     }
 
-    let object1 = object::BasicObject::new(&device, surface_format, vertices);
+    let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        label: None,
+        entries: &[wgpu::BindGroupLayoutEntry {
+            binding: 0,
+            visibility: wgpu::ShaderStages::VERTEX,
+            ty: wgpu::BindingType::Buffer {
+                ty: wgpu::BufferBindingType::Uniform,
+                has_dynamic_offset: false,
+                min_binding_size: wgpu::BufferSize::new(64),
+            },
+            count: None,
+        }],
+    });
+
+    let object1 = object::BasicObject::new(&device, surface_format, &bind_group_layout, vertices);
 
     let objects: Vec<Box<dyn Object>> = vec![Box::new(object1)];
 
     // Create passes
-    let pointpass = PointsPass::new(objects, TextureHandle::get_surface());
+    let pointpass = PointsPass::new(
+        &device,
+        &bind_group_layout,
+        objects,
+        TextureHandle::get_surface(),
+    );
     let passes: Vec<Box<dyn Pass>> = vec![Box::new(pointpass)];
 
     let mut config = surface
@@ -113,7 +133,12 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                 {
                     let resolver = texture_store.get_resolver(&view);
                     for pass in &passes {
-                        pass.render(&mut encoder, &resolver);
+                        pass.render(
+                            size.width as f32 / size.height as f32,
+                            &queue,
+                            &mut encoder,
+                            &resolver,
+                        );
                     }
                 }
 
@@ -131,6 +156,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                         // Reconfigure the surface with the new size
                         config.width = new_size.width.max(1);
                         config.height = new_size.height.max(1);
+                        size = PhysicalSize::new(config.width, config.height);
                         surface.configure(&device, &config);
                         // On macos the window needs to be redrawn manually after resizing
                         window.request_redraw();

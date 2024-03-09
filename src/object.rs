@@ -1,6 +1,6 @@
 use bytemuck::{Pod, Zeroable};
 use nalgebra::Vector3;
-use wgpu::{util::DeviceExt, Buffer, Device, RenderPass, TextureFormat};
+use wgpu::{util::DeviceExt, BindGroupLayout, Buffer, Device, RenderPass, TextureFormat};
 
 use crate::material::{self, Material};
 
@@ -23,7 +23,12 @@ pub struct BasicObject {
 }
 
 impl BasicObject {
-    pub fn new(device: &Device, format: TextureFormat, vertices: Vec<BasicVertex>) -> Self {
+    pub fn new(
+        device: &Device,
+        format: TextureFormat,
+        bind_group_layout: &BindGroupLayout,
+        vertices: Vec<BasicVertex>,
+    ) -> Self {
         let buffer_layout = wgpu::VertexBufferLayout {
             array_stride: std::mem::size_of::<BasicVertex>() as wgpu::BufferAddress,
             step_mode: wgpu::VertexStepMode::Vertex,
@@ -49,6 +54,7 @@ impl BasicObject {
             "basic",
             &[buffer_layout],
             include_str!("shader.wgsl"),
+            bind_group_layout,
         );
 
         let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {

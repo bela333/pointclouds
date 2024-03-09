@@ -1,7 +1,8 @@
 use std::borrow::Cow;
 
 use wgpu::{
-    Device, PipelineLayout, RenderPipeline, ShaderModule, TextureFormat, VertexBufferLayout,
+    BindGroupLayout, Device, PipelineLayout, RenderPipeline, ShaderModule, TextureFormat,
+    VertexBufferLayout,
 };
 
 pub struct Material {
@@ -19,14 +20,16 @@ impl Material {
         material_name: &str,
         vertex_buffers: &[VertexBufferLayout],
         source: &str,
+        bind_group_layout: &BindGroupLayout,
     ) -> Self {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some(format!("{} shader", material_name).as_str()),
             source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(source)),
         });
+
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: None,
-            bind_group_layouts: &[],
+            bind_group_layouts: &[&bind_group_layout],
             push_constant_ranges: &[],
         });
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
