@@ -44,7 +44,7 @@ impl TextureStore {
     ) -> Option<()> {
         match depth_buffer.0 {
             InnerTextureHandle::Surface => {
-                None// TODO: Add proper error handling
+                None // TODO: Add proper error handling
             }
             InnerTextureHandle::TextureID(i) => {
                 let texture = device.create_texture(texture_decriptor);

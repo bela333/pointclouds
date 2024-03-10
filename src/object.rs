@@ -2,7 +2,7 @@ use bytemuck::{Pod, Zeroable};
 use nalgebra::Vector3;
 use wgpu::{util::DeviceExt, BindGroupLayout, Buffer, Device, RenderPass, TextureFormat};
 
-use crate::material::{self, Material};
+use crate::{material::Material, pass::points_pass::PointsPass};
 
 pub trait Object {
     fn update(&mut self);
@@ -29,39 +29,13 @@ impl BasicObject {
         bind_group_layout: &BindGroupLayout,
         vertices: Vec<BasicVertex>,
     ) -> Self {
-        let buffer_layout = wgpu::VertexBufferLayout {
-            array_stride: std::mem::size_of::<BasicVertex>() as wgpu::BufferAddress,
-            step_mode: wgpu::VertexStepMode::Vertex,
-            attributes: &[
-                // Position
-                wgpu::VertexAttribute {
-                    format: wgpu::VertexFormat::Float32x3,
-                    offset: 0,
-                    shader_location: 0,
-                },
-                // Color
-                wgpu::VertexAttribute {
-                    format: wgpu::VertexFormat::Float32x3,
-                    offset: 12,
-                    shader_location: 1,
-                },
-            ],
-        };
-
-        let material = material::Material::create(
-            device,
-            format,
-            "basic",
-            &[buffer_layout],
-            include_str!("shader.wgsl"),
-            bind_group_layout,
-        );
-
         let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
             contents: bytemuck::cast_slice(&vertices),
             usage: wgpu::BufferUsages::VERTEX,
         });
+
+        let material = PointsPass::create_point_material(device, format, bind_group_layout);
 
         Self {
             material,
@@ -78,7 +52,7 @@ impl Object for BasicObject {
 
     fn draw<'a>(&'a self, pass: &mut RenderPass<'a>) {
         // Draw the object
-        pass.set_pipeline(self.material.get_render_pipeline());
+        pass.set_pipeline(&self.material.render_pipeline);
         pass.set_vertex_buffer(0, self.buffer.slice(..));
         pass.draw(0..self.vertex_count, 0..1);
     }

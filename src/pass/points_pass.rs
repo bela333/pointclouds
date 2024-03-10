@@ -1,9 +1,10 @@
-use std::time::Duration;
+use std::{borrow::Cow, time::Duration};
 
-use wgpu::{BindGroupLayout, Buffer, CommandEncoder, Device, Queue};
+use wgpu::{BindGroupLayout, Buffer, CommandEncoder, Device, Queue, TextureFormat};
 
 use crate::{
-    object::Object,
+    material::Material,
+    object::{BasicVertex, Object},
     texture_store::{TextureHandle, TextureResolver},
 };
 
@@ -47,6 +48,75 @@ impl PointsPass {
             depth_buffer,
         }
     }
+
+    pub fn create_point_material(
+        device: &Device,
+        format: TextureFormat,
+        bind_group_layout: &BindGroupLayout,
+    ) -> Material {
+        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("Point shader"),
+            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!("../shader.wgsl"))),
+        });
+
+        let buffer_layout = wgpu::VertexBufferLayout {
+            array_stride: std::mem::size_of::<BasicVertex>() as wgpu::BufferAddress,
+            step_mode: wgpu::VertexStepMode::Vertex,
+            attributes: &[
+                // Position
+                wgpu::VertexAttribute {
+                    format: wgpu::VertexFormat::Float32x3,
+                    offset: 0,
+                    shader_location: 0,
+                },
+                // Color
+                wgpu::VertexAttribute {
+                    format: wgpu::VertexFormat::Float32x3,
+                    offset: 12,
+                    shader_location: 1,
+                },
+            ],
+        };
+
+        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: None,
+            bind_group_layouts: &[&bind_group_layout],
+            push_constant_ranges: &[],
+        });
+        let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: None,
+            layout: Some(&pipeline_layout),
+            vertex: wgpu::VertexState {
+                module: &shader,
+                entry_point: "vs_main",
+                buffers: &[buffer_layout],
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: &shader,
+                entry_point: "fs_main",
+                targets: &[Some(format.into())],
+            }),
+            primitive: wgpu::PrimitiveState {
+                polygon_mode: wgpu::PolygonMode::Point,
+                ..Default::default()
+            },
+            depth_stencil: Some(wgpu::DepthStencilState {
+                format: TextureFormat::Depth32Float,
+                depth_write_enabled: true,
+                depth_compare: wgpu::CompareFunction::Less,
+                stencil: Default::default(),
+                bias: Default::default(),
+            }),
+            multisample: wgpu::MultisampleState::default(),
+            multiview: None,
+        });
+
+        Material {
+            pipeline_layout,
+            shader,
+            render_pipeline,
+        }
+    }
 }
 
 impl Pass for PointsPass {
@@ -63,7 +133,7 @@ impl Pass for PointsPass {
         let perspective: nalgebra::Matrix4<f32> =
             nalgebra::Matrix4::new_perspective(aspect_ratio, 1.0, 0.1, 100.0);
         let camera_position = nalgebra::Point3::new(elapsed.cos() * 1.0, 0.0, elapsed.sin() * 1.0);
-        let camera_lookat_matrix =  nalgebra::Matrix4::look_at_rh(
+        let camera_lookat_matrix = nalgebra::Matrix4::look_at_rh(
             &camera_position,
             &nalgebra::Point3::new(0.0, 0.0, 0.0),
             &nalgebra::Vector3::new(0.0, 1.0, 0.0),

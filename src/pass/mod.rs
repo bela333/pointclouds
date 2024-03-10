@@ -13,6 +13,6 @@ pub trait Pass {
         queue: &Queue,
         encoder: &mut CommandEncoder,
         textures: &TextureResolver,
-        elapsed: Duration
+        elapsed: Duration,
     );
 }

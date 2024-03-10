@@ -202,7 +202,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                             &queue,
                             &mut encoder,
                             &resolver,
-                            elapsed
+                            elapsed,
                         );
                     }
                 }
