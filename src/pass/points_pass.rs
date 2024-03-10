@@ -1,6 +1,6 @@
 use std::{borrow::Cow, time::Duration};
 
-use wgpu::{BindGroupLayout, Buffer, CommandEncoder, Device, Queue, TextureFormat};
+use wgpu::{core::device, BindGroupLayout, Buffer, CommandEncoder, Device, Queue, TextureFormat};
 
 use crate::{
     material::Material,
@@ -56,7 +56,7 @@ impl PointsPass {
     ) -> Material {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Point shader"),
-            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!("../shader.wgsl"))),
+            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!("../shaders/point.wgsl"))),
         });
 
         let buffer_layout = wgpu::VertexBufferLayout {
@@ -79,12 +79,12 @@ impl PointsPass {
         };
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: None,
+            label: Some("Point pipeline layout"),
             bind_group_layouts: &[&bind_group_layout],
             push_constant_ranges: &[],
         });
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: None,
+            label: Some("Point pipeline"),
             layout: Some(&pipeline_layout),
             vertex: wgpu::VertexState {
                 module: &shader,
@@ -121,8 +121,9 @@ impl PointsPass {
 
 impl Pass for PointsPass {
     fn render(
-        &self,
+        &mut self,
         aspect_ratio: f32,
+        device: &Device,
         queue: &Queue,
         encoder: &mut CommandEncoder,
         textures: &TextureResolver,
@@ -145,12 +146,12 @@ impl Pass for PointsPass {
         let depth_buffer = textures.resolve(self.depth_buffer);
 
         let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: None,
+            label: Some("Points pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view,
                 resolve_target: None,
                 ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                    load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
                     store: wgpu::StoreOp::Store,
                 },
             })],

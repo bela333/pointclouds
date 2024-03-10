@@ -2,7 +2,7 @@ use las::Read;
 use nalgebra::vector;
 use object::{BasicVertex, Object};
 
-use pass::{points_pass::PointsPass, Pass};
+use pass::{blit::BlitPass, points_pass::PointsPass, Pass};
 use texture_store::{TextureHandle, TextureStore};
 use wgpu::{PresentMode, TextureDescriptor};
 use winit::{
@@ -72,6 +72,24 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
         },
     );
 
+    let offscreen_buffer = texture_store.reserve(
+        &device,
+        &TextureDescriptor {
+            label: None,
+            size: wgpu::Extent3d {
+                width: size.width,
+                height: size.height,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8UnormSrgb,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+            view_formats: &[],
+        },
+    );
+
     // Setup objects
     let mut vertices = Vec::new();
     let mut reader = las::Reader::from_path("pointcloud.las").unwrap();
@@ -108,7 +126,12 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
         }],
     });
 
-    let object1 = object::BasicObject::new(&device, surface_format, &bind_group_layout, vertices);
+    let object1 = object::BasicObject::new(
+        &device,
+        wgpu::TextureFormat::Rgba8UnormSrgb,
+        &bind_group_layout,
+        vertices,
+    );
 
     let objects: Vec<Box<dyn Object>> = vec![Box::new(object1)];
 
@@ -117,10 +140,18 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
         &device,
         &bind_group_layout,
         objects,
-        TextureHandle::get_surface(),
+        offscreen_buffer,
         depth_buffer,
     );
-    let passes: Vec<Box<dyn Pass>> = vec![Box::new(pointpass)];
+
+    let blit = BlitPass::new(
+        &device,
+        offscreen_buffer,
+        TextureHandle::get_surface(),
+        surface_format,
+    );
+
+    let mut passes: Vec<Box<dyn Pass>> = vec![Box::new(pointpass), Box::new(blit)];
 
     let mut config = surface
         .get_default_config(&adapter, size.width, size.height)
@@ -178,6 +209,27 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                                 depth_buffer,
                             )
                             .unwrap();
+                        texture_store
+                            .recreate(
+                                &device,
+                                &TextureDescriptor {
+                                    label: None,
+                                    size: wgpu::Extent3d {
+                                        width: size.width,
+                                        height: size.height,
+                                        depth_or_array_layers: 1,
+                                    },
+                                    mip_level_count: 1,
+                                    sample_count: 1,
+                                    dimension: wgpu::TextureDimension::D2,
+                                    format: wgpu::TextureFormat::Rgba8UnormSrgb,
+                                    usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                                        | wgpu::TextureUsages::TEXTURE_BINDING,
+                                    view_formats: &[],
+                                },
+                                offscreen_buffer,
+                            )
+                            .unwrap();
                     }
                     WindowEvent::CloseRequested => target.exit(),
                     _ => {}
@@ -196,9 +248,10 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                 {
                     let resolver = texture_store.get_resolver(&view);
                     let elapsed = start_time.elapsed();
-                    for pass in &passes {
+                    for pass in &mut passes {
                         pass.render(
                             size.width as f32 / size.height as f32,
+                            &device,
                             &queue,
                             &mut encoder,
                             &resolver,

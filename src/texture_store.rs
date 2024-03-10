@@ -29,8 +29,8 @@ impl TextureStore {
         TextureHandle(InnerTextureHandle::TextureID(TextureID { id }))
     }
 
-    pub fn resolve_format(&self, view: TextureHandle) -> Option<TextureFormat> {
-        match view.0 {
+    pub fn resolve_format(&self, handle: TextureHandle) -> Option<TextureFormat> {
+        match handle.0 {
             InnerTextureHandle::Surface => None,
             InnerTextureHandle::TextureID(i) => Some(self.textures[i.id].texture.format()),
         }
@@ -40,9 +40,9 @@ impl TextureStore {
         &mut self,
         device: &Device,
         texture_decriptor: &TextureDescriptor,
-        depth_buffer: TextureHandle,
+        handle: TextureHandle,
     ) -> Option<()> {
-        match depth_buffer.0 {
+        match handle.0 {
             InnerTextureHandle::Surface => {
                 None // TODO: Add proper error handling
             }

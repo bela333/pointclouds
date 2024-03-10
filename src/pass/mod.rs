@@ -1,15 +1,17 @@
 use std::time::Duration;
 
-use wgpu::{CommandEncoder, Queue};
+use wgpu::{CommandEncoder, Device, Queue};
 
 use crate::texture_store::TextureResolver;
 
+pub mod blit;
 pub mod points_pass;
 
 pub trait Pass {
     fn render(
-        &self,
+        &mut self,
         aspect_ratio: f32,
+        device: &Device,
         queue: &Queue,
         encoder: &mut CommandEncoder,
         textures: &TextureResolver,
