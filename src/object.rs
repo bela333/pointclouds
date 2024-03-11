@@ -36,7 +36,12 @@ impl BasicObject {
             usage: wgpu::BufferUsages::VERTEX,
         });
 
-        let material = PointsPass::create_point_material(device, position_format, color_format, bind_group_layout);
+        let material = PointsPass::create_point_material(
+            device,
+            position_format,
+            color_format,
+            bind_group_layout,
+        );
 
         Self {
             material,

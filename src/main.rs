@@ -2,7 +2,13 @@ use las::Read;
 use nalgebra::vector;
 use object::{BasicVertex, Object};
 
-use pass::{blit::BlitPass, jumpflood::{self, JumpfloodPass}, points_pass::PointsPass, Pass};
+use pass::{
+    blit::BlitPass,
+    jumpflood::{self, JumpfloodPass},
+    points_pass::PointsPass,
+    recolor::RecolorPass,
+    Pass,
+};
 use texture_store::{TextureHandle, TextureStore};
 use wgpu::{PresentMode, TextureDescriptor};
 use winit::{
@@ -180,43 +186,23 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
         depth_buffer,
     );
 
-    let jumpfloodpre = JumpfloodPass::new(
-        &device,
-        off1,
-        off2,
-        wgpu::TextureFormat::Rgba16Float,
-        1
-    );
-    let jumpflood8 = JumpfloodPass::new(
-        &device,
-        off2,
-        off1,
-        wgpu::TextureFormat::Rgba16Float,
-        8
-    );
-    let jumpflood4 = JumpfloodPass::new(
-        &device,
-        off1,
-        off2,
-        wgpu::TextureFormat::Rgba16Float,
-        4
-    );
-    let jumpflood2 = JumpfloodPass::new(
-        &device,
-        off2,
-        off1,
-        wgpu::TextureFormat::Rgba16Float,
-        2
-    );
-    let jumpflood1 = JumpfloodPass::new(
-        &device,
-        off1,
-        TextureHandle::get_surface(),
-        surface_format,
-        1
-    );
+    let jumpfloodpre = JumpfloodPass::new(&device, off1, off2, wgpu::TextureFormat::Rgba16Float, 1);
+    let jumpflood8 = JumpfloodPass::new(&device, off2, off1, wgpu::TextureFormat::Rgba16Float, 8);
+    let jumpflood4 = JumpfloodPass::new(&device, off1, off2, wgpu::TextureFormat::Rgba16Float, 4);
+    let jumpflood2 = JumpfloodPass::new(&device, off2, off1, wgpu::TextureFormat::Rgba16Float, 2);
+    let jumpflood1 = JumpfloodPass::new(&device, off1, off2, wgpu::TextureFormat::Rgba16Float, 1);
 
-    let mut passes: Vec<Box<dyn Pass>> = vec![Box::new(pointpass), Box::new(jumpfloodpre), Box::new(jumpflood8), Box::new(jumpflood4), Box::new(jumpflood2), Box::new(jumpflood1)];
+    let recolor = RecolorPass::new(&device, colorbuf, off2, TextureHandle::get_surface(), surface_format);
+
+    let mut passes: Vec<Box<dyn Pass>> = vec![
+        Box::new(pointpass),
+        Box::new(jumpfloodpre),
+        Box::new(jumpflood8),
+        Box::new(jumpflood4),
+        Box::new(jumpflood2),
+        Box::new(jumpflood1),
+        Box::new(recolor)
+    ];
 
     let mut config = surface
         .get_default_config(&adapter, size.width, size.height)

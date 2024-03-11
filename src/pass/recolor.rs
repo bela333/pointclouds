@@ -4,35 +4,36 @@ use wgpu::{
     util::{BufferInitDescriptor, DeviceExt},
     BindGroupLayout, Buffer, Device, Sampler, TextureFormat,
 };
+use winit::dpi::Position;
 
 use crate::{material::Material, texture_store::TextureHandle};
 
 use super::Pass;
 
-pub struct JumpfloodPass {
-    input_texture: TextureHandle,
+pub struct RecolorPass {
+    color_texture: TextureHandle,
+    position_texture: TextureHandle,
     output_texture: TextureHandle,
     bind_group_layout: BindGroupLayout,
     material: Material,
     bind_group: Option<wgpu::BindGroup>,
-    sampler: Sampler,
     vertex_buffer: Buffer,
 }
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
-struct JumpfloodVertex {
+struct RecolorVertex {
     position: nalgebra::Vector2<f32>,
     tex_coords: nalgebra::Vector2<f32>,
 }
 
-impl JumpfloodPass {
+impl RecolorPass {
     pub fn new(
         device: &Device,
-        input_texture: TextureHandle,
+        color_buffer: TextureHandle,
+        position_buffer: TextureHandle,
         output_texture: TextureHandle,
         output_format: TextureFormat,
-        jump: u32,
     ) -> Self {
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: None,
@@ -50,68 +51,57 @@ impl JumpfloodPass {
                 wgpu::BindGroupLayoutEntry {
                     binding: 1,
                     visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
                     count: None,
                 },
             ],
         });
 
-        let material = Self::create_material(device, output_format, &bind_group_layout, jump);
+        let material = Self::create_material(device, output_format, &bind_group_layout);
 
-        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-            label: Some("jumpflood sampler"),
-            address_mode_u: wgpu::AddressMode::ClampToEdge,
-            address_mode_v: wgpu::AddressMode::ClampToEdge,
-            address_mode_w: wgpu::AddressMode::ClampToEdge,
-            mag_filter: wgpu::FilterMode::Nearest,
-            min_filter: wgpu::FilterMode::Nearest,
-            mipmap_filter: wgpu::FilterMode::Nearest,
-            lod_min_clamp: 0.0,
-            lod_max_clamp: 100.0,
-            compare: None,
-            anisotropy_clamp: 1,
-            border_color: None,
-        });
-
-        let vertices: &[JumpfloodVertex] = &[
-            JumpfloodVertex {
+        let vertices: &[RecolorVertex] = &[
+            RecolorVertex {
                 position: nalgebra::Vector2::new(-1.0, 1.0),
                 tex_coords: nalgebra::Vector2::new(0.0, 0.0),
             },
-            JumpfloodVertex {
+            RecolorVertex {
                 position: nalgebra::Vector2::new(-1.0, -1.0),
                 tex_coords: nalgebra::Vector2::new(0.0, 1.0),
             },
-            JumpfloodVertex {
+            RecolorVertex {
                 position: nalgebra::Vector2::new(1.0, 1.0),
                 tex_coords: nalgebra::Vector2::new(1.0, 0.0),
             },
-            JumpfloodVertex {
+            RecolorVertex {
                 position: nalgebra::Vector2::new(1.0, 1.0),
                 tex_coords: nalgebra::Vector2::new(1.0, 0.0),
             },
-            JumpfloodVertex {
+            RecolorVertex {
                 position: nalgebra::Vector2::new(-1.0, -1.0),
                 tex_coords: nalgebra::Vector2::new(0.0, 1.0),
             },
-            JumpfloodVertex {
+            RecolorVertex {
                 position: nalgebra::Vector2::new(1.0, -1.0),
                 tex_coords: nalgebra::Vector2::new(1.0, 1.0),
             },
         ];
 
         let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
-            label: Some("jumpflood vertex buffer"),
+            label: Some("recolor vertex buffer"),
             contents: bytemuck::cast_slice(vertices),
             usage: wgpu::BufferUsages::VERTEX,
         });
 
         Self {
-            input_texture,
+            color_texture: color_buffer,
+            position_texture: position_buffer,
             output_texture,
             material,
             bind_group_layout,
-            sampler,
             vertex_buffer,
             bind_group: None,
         }
@@ -121,25 +111,20 @@ impl JumpfloodPass {
         device: &Device,
         format: TextureFormat,
         bind_group_layout: &BindGroupLayout,
-        jump: u32,
     ) -> Material {
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("jumpflood pipeline layout"),
+            label: Some("recolor pipeline layout"),
             bind_group_layouts: &[bind_group_layout],
             push_constant_ranges: &[],
         });
 
-        let shadersource = include_str!("../shaders/jumpflood.wgsl");
-
-        let shadersource = shadersource.replace("{JUMP}", &jump.to_string());
-
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("jumpflood shader"),
-            source: wgpu::ShaderSource::Wgsl(Cow::Owned(shadersource)),
+            label: Some("recolor shader"),
+            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!("../shaders/recolor.wgsl"))),
         });
 
         let vertex_buffer = [wgpu::VertexBufferLayout {
-            array_stride: std::mem::size_of::<JumpfloodVertex>() as wgpu::BufferAddress,
+            array_stride: std::mem::size_of::<RecolorVertex>() as wgpu::BufferAddress,
             step_mode: wgpu::VertexStepMode::Vertex,
             attributes: &[
                 wgpu::VertexAttribute {
@@ -156,7 +141,7 @@ impl JumpfloodPass {
         }];
 
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("jumpflood pipeline"),
+            label: Some("recolor pipeline"),
             layout: Some(&pipeline_layout),
             vertex: wgpu::VertexState {
                 module: &shader,
@@ -189,7 +174,7 @@ impl JumpfloodPass {
     }
 }
 
-impl Pass for JumpfloodPass {
+impl Pass for RecolorPass {
     fn render(
         &mut self,
         _: f32,
@@ -199,10 +184,11 @@ impl Pass for JumpfloodPass {
         textures: &crate::texture_store::TextureResolver,
         _: std::time::Duration,
     ) {
-        let view = textures.resolve(self.input_texture);
+        let color_view = textures.resolve(self.color_texture);
+        let position_view = textures.resolve(self.position_texture);
         let output_view = textures.resolve(self.output_texture);
         let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: Some("jumpflood pass"),
+            label: Some("recolor pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: output_view,
                 resolve_target: None,
@@ -217,16 +203,16 @@ impl Pass for JumpfloodPass {
         });
 
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("jumpflood bind group"),
+            label: Some("recolor bind group"),
             layout: &self.bind_group_layout,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: wgpu::BindingResource::TextureView(view),
+                    resource: wgpu::BindingResource::TextureView(color_view),
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: wgpu::BindingResource::Sampler(&self.sampler),
+                    resource: wgpu::BindingResource::TextureView(position_view),
                 },
             ],
         });
