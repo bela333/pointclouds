@@ -25,7 +25,8 @@ pub struct BasicObject {
 impl BasicObject {
     pub fn new(
         device: &Device,
-        format: TextureFormat,
+        position_format: TextureFormat,
+        color_format: TextureFormat,
         bind_group_layout: &BindGroupLayout,
         vertices: Vec<BasicVertex>,
     ) -> Self {
@@ -35,7 +36,7 @@ impl BasicObject {
             usage: wgpu::BufferUsages::VERTEX,
         });
 
-        let material = PointsPass::create_point_material(device, format, bind_group_layout);
+        let material = PointsPass::create_point_material(device, position_format, color_format, bind_group_layout);
 
         Self {
             material,

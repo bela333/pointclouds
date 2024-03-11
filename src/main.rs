@@ -72,6 +72,23 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
         },
     );
 
+    let colorbuf = texture_store.reserve(
+        &device,
+        &TextureDescriptor {
+            label: None,
+            size: wgpu::Extent3d {
+                width: size.width,
+                height: size.height,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8UnormSrgb,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+            view_formats: &[],
+        },
+    );
     let off1 = texture_store.reserve(
         &device,
         &TextureDescriptor {
@@ -146,6 +163,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
     let object1 = object::BasicObject::new(
         &device,
         wgpu::TextureFormat::Rgba16Float,
+        wgpu::TextureFormat::Rgba8UnormSrgb,
         &bind_group_layout,
         vertices,
     );
@@ -158,6 +176,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
         &bind_group_layout,
         objects,
         off1,
+        colorbuf,
         depth_buffer,
     );
 
@@ -253,6 +272,27 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                                     view_formats: &[],
                                 },
                                 depth_buffer,
+                            )
+                            .unwrap();
+                        texture_store
+                            .recreate(
+                                &device,
+                                &TextureDescriptor {
+                                    label: None,
+                                    size: wgpu::Extent3d {
+                                        width: size.width,
+                                        height: size.height,
+                                        depth_or_array_layers: 1,
+                                    },
+                                    mip_level_count: 1,
+                                    sample_count: 1,
+                                    dimension: wgpu::TextureDimension::D2,
+                                    format: wgpu::TextureFormat::Rgba8UnormSrgb,
+                                    usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                                        | wgpu::TextureUsages::TEXTURE_BINDING,
+                                    view_formats: &[],
+                                },
+                                colorbuf,
                             )
                             .unwrap();
                         texture_store

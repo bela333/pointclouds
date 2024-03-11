@@ -21,7 +21,16 @@ fn vs_main(
     return result;
 }
 
+struct FragmentOutput{
+    @location(0) posbuf: vec4<f32>,
+    @location(1) colorbuf: vec4<f32>,
+
+}
+
 @fragment
-fn fs_main(vertex: VertexOutput) -> @location(0) vec4<f32> {
-    return vec4<f32>(vertex.position.xy, 1.0, 1.0);
+fn fs_main(vertex: VertexOutput) -> FragmentOutput {
+    var result: FragmentOutput;
+    result.posbuf = vec4<f32>(vertex.position.xy, 1.0, 1.0);
+    result.colorbuf = vec4<f32>(vertex.color, 1.0);
+    return result;
 }

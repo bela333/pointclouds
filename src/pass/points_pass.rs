@@ -12,7 +12,8 @@ use super::Pass;
 
 pub struct PointsPass {
     objects: Vec<Box<dyn Object>>,
-    output_view: TextureHandle,
+    position_buffer: TextureHandle,
+    color_buffer: TextureHandle,
     uniform_buf: Buffer,
     bind_group: wgpu::BindGroup,
     depth_buffer: TextureHandle,
@@ -23,7 +24,8 @@ impl PointsPass {
         device: &Device,
         bind_group_layout: &BindGroupLayout,
         objects: Vec<Box<dyn Object>>,
-        output_view: TextureHandle,
+        position_buffer: TextureHandle,
+        color_buffer: TextureHandle,
         depth_buffer: TextureHandle,
     ) -> Self {
         let uniform_buf = device.create_buffer(&wgpu::BufferDescriptor {
@@ -42,7 +44,8 @@ impl PointsPass {
         });
         Self {
             objects,
-            output_view,
+            position_buffer,
+            color_buffer,
             uniform_buf,
             bind_group,
             depth_buffer,
@@ -51,7 +54,8 @@ impl PointsPass {
 
     pub fn create_point_material(
         device: &Device,
-        format: TextureFormat,
+        position_format: TextureFormat,
+        color_format: TextureFormat,
         bind_group_layout: &BindGroupLayout,
     ) -> Material {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -94,7 +98,7 @@ impl PointsPass {
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
                 entry_point: "fs_main",
-                targets: &[Some(format.into())],
+                targets: &[Some(position_format.into()), Some(color_format.into())],
             }),
             primitive: wgpu::PrimitiveState {
                 polygon_mode: wgpu::PolygonMode::Point,
@@ -142,13 +146,22 @@ impl Pass for PointsPass {
         let mx = perspective * camera_lookat_matrix;
         queue.write_buffer(&self.uniform_buf, 0, bytemuck::bytes_of(&mx));
 
-        let view = textures.resolve(self.output_view);
+        let position_view = textures.resolve(self.position_buffer);
+        let color_view = textures.resolve(self.color_buffer);
         let depth_buffer = textures.resolve(self.depth_buffer);
 
         let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("Points pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view,
+                view: position_view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                    store: wgpu::StoreOp::Store,
+                },
+            }),
+            Some(wgpu::RenderPassColorAttachment {
+                view: color_view,
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
