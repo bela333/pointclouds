@@ -1,6 +1,6 @@
 use std::{borrow::Cow, time::Duration};
 
-use wgpu::{core::device, BindGroupLayout, Buffer, CommandEncoder, Device, Queue, TextureFormat};
+use wgpu::{BindGroupLayout, Buffer, CommandEncoder, Device, Queue, TextureFormat};
 
 use crate::{
     material::Material,
@@ -123,7 +123,7 @@ impl Pass for PointsPass {
     fn render(
         &mut self,
         aspect_ratio: f32,
-        device: &Device,
+        _: &Device,
         queue: &Queue,
         encoder: &mut CommandEncoder,
         textures: &TextureResolver,

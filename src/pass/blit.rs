@@ -1,7 +1,6 @@
 use std::borrow::Cow;
 
 use wgpu::{
-    core::pipeline,
     util::{BufferInitDescriptor, DeviceExt},
     BindGroupLayout, Buffer, Device, Sampler, TextureFormat,
 };
@@ -187,12 +186,12 @@ impl BlitPass {
 impl Pass for BlitPass {
     fn render(
         &mut self,
-        aspect_ratio: f32,
+        _: f32,
         device: &wgpu::Device,
-        queue: &wgpu::Queue,
+        _: &wgpu::Queue,
         encoder: &mut wgpu::CommandEncoder,
         textures: &crate::texture_store::TextureResolver,
-        elapsed: std::time::Duration,
+        _: std::time::Duration,
     ) {
         let view = textures.resolve(self.input_texture);
         let output_view = textures.resolve(self.output_texture);
