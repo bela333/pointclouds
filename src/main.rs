@@ -191,8 +191,9 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
     let jumpflood4 = JumpfloodPass::new(&device, off1, off2, wgpu::TextureFormat::Rgba16Float, 4);
     let jumpflood2 = JumpfloodPass::new(&device, off2, off1, wgpu::TextureFormat::Rgba16Float, 2);
     let jumpflood1 = JumpfloodPass::new(&device, off1, off2, wgpu::TextureFormat::Rgba16Float, 1);
+    let jumpfloodpost = JumpfloodPass::new(&device, off2, off1, wgpu::TextureFormat::Rgba16Float, 1);
 
-    let recolor = RecolorPass::new(&device, colorbuf, off2, TextureHandle::get_surface(), surface_format);
+    let recolor = RecolorPass::new(&device, colorbuf, off1, TextureHandle::get_surface(), surface_format);
 
     let mut passes: Vec<Box<dyn Pass>> = vec![
         Box::new(pointpass),
@@ -201,6 +202,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
         Box::new(jumpflood4),
         Box::new(jumpflood2),
         Box::new(jumpflood1),
+        Box::new(jumpfloodpost),
         Box::new(recolor)
     ];
 

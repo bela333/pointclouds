@@ -30,7 +30,7 @@ struct FragmentOutput{
 @fragment
 fn fs_main(vertex: VertexOutput) -> FragmentOutput {
     var result: FragmentOutput;
-    result.posbuf = vec4<f32>(vertex.position.xy, 1.0, 1.0);
+    result.posbuf = vec4<f32>(vertex.position.xyz, 1.0);
     result.colorbuf = vec4<f32>(vertex.color, 1.0);
     return result;
 }
