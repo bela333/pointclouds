@@ -2,7 +2,7 @@ use las::Read;
 use nalgebra::vector;
 use object::{BasicVertex, Object};
 
-use pass::{blit::BlitPass, points_pass::PointsPass, Pass};
+use pass::{blit::BlitPass, jumpflood::{self, JumpfloodPass}, points_pass::PointsPass, Pass};
 use texture_store::{TextureHandle, TextureStore};
 use wgpu::{PresentMode, TextureDescriptor};
 use winit::{
@@ -72,7 +72,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
         },
     );
 
-    let offscreen_buffer = texture_store.reserve(
+    let off1 = texture_store.reserve(
         &device,
         &TextureDescriptor {
             label: None,
@@ -84,7 +84,24 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8UnormSrgb,
+            format: wgpu::TextureFormat::Rgba16Float,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+            view_formats: &[],
+        },
+    );
+    let off2 = texture_store.reserve(
+        &device,
+        &TextureDescriptor {
+            label: None,
+            size: wgpu::Extent3d {
+                width: size.width,
+                height: size.height,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba16Float,
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
             view_formats: &[],
         },
@@ -128,7 +145,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
 
     let object1 = object::BasicObject::new(
         &device,
-        wgpu::TextureFormat::Rgba8UnormSrgb,
+        wgpu::TextureFormat::Rgba16Float,
         &bind_group_layout,
         vertices,
     );
@@ -140,18 +157,47 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
         &device,
         &bind_group_layout,
         objects,
-        offscreen_buffer,
+        off1,
         depth_buffer,
     );
 
-    let blit = BlitPass::new(
+    let jumpfloodpre = JumpfloodPass::new(
         &device,
-        offscreen_buffer,
+        off1,
+        off2,
+        wgpu::TextureFormat::Rgba16Float,
+        1
+    );
+    let jumpflood8 = JumpfloodPass::new(
+        &device,
+        off2,
+        off1,
+        wgpu::TextureFormat::Rgba16Float,
+        8
+    );
+    let jumpflood4 = JumpfloodPass::new(
+        &device,
+        off1,
+        off2,
+        wgpu::TextureFormat::Rgba16Float,
+        4
+    );
+    let jumpflood2 = JumpfloodPass::new(
+        &device,
+        off2,
+        off1,
+        wgpu::TextureFormat::Rgba16Float,
+        2
+    );
+    let jumpflood1 = JumpfloodPass::new(
+        &device,
+        off1,
         TextureHandle::get_surface(),
         surface_format,
+        1
     );
 
-    let mut passes: Vec<Box<dyn Pass>> = vec![Box::new(pointpass), Box::new(blit)];
+    let mut passes: Vec<Box<dyn Pass>> = vec![Box::new(pointpass), Box::new(jumpfloodpre), Box::new(jumpflood8), Box::new(jumpflood4), Box::new(jumpflood2), Box::new(jumpflood1)];
 
     let mut config = surface
         .get_default_config(&adapter, size.width, size.height)
@@ -222,12 +268,33 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                                     mip_level_count: 1,
                                     sample_count: 1,
                                     dimension: wgpu::TextureDimension::D2,
-                                    format: wgpu::TextureFormat::Rgba8UnormSrgb,
+                                    format: wgpu::TextureFormat::Rgba16Float,
                                     usage: wgpu::TextureUsages::RENDER_ATTACHMENT
                                         | wgpu::TextureUsages::TEXTURE_BINDING,
                                     view_formats: &[],
                                 },
-                                offscreen_buffer,
+                                off1,
+                            )
+                            .unwrap();
+                        texture_store
+                            .recreate(
+                                &device,
+                                &TextureDescriptor {
+                                    label: None,
+                                    size: wgpu::Extent3d {
+                                        width: size.width,
+                                        height: size.height,
+                                        depth_or_array_layers: 1,
+                                    },
+                                    mip_level_count: 1,
+                                    sample_count: 1,
+                                    dimension: wgpu::TextureDimension::D2,
+                                    format: wgpu::TextureFormat::Rgba16Float,
+                                    usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                                        | wgpu::TextureUsages::TEXTURE_BINDING,
+                                    view_formats: &[],
+                                },
+                                off2,
                             )
                             .unwrap();
                     }

@@ -5,6 +5,7 @@ use wgpu::{CommandEncoder, Device, Queue};
 use crate::texture_store::TextureResolver;
 
 pub mod blit;
+pub mod jumpflood;
 pub mod points_pass;
 
 pub trait Pass {
