@@ -46,7 +46,7 @@ fn fs_main(vertex: VertexOutput) -> @location(0) vec4<f32> {
         t = te;
     }
     
-    if(length(t.xy-posf) > 4.0){
+    if(length(t.xy-posf) > 16.0/sqrt(2.0)){
         return vec4<f32>(0);
     }
 
